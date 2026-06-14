@@ -1,0 +1,184 @@
+name: 'Synapse Index'
+description: 'Index repository with synapse on push, cache DB, and optionally comment on PRs with API changes.'
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  languages:
+    description: 'Comma-separated list of languages to index (default: all supported)'
+    required: false
+    default: ''
+  db-path:
+    description: 'Path to store the graph database (default: .synapse/graph.db)'
+    required: false
+    default: '.synapse/graph.db'
+  comment-on-pr:
+    description: 'Whether to comment on PRs with API diff (default: true)'
+    required: false
+    default: 'true'
+  base-ref:
+    description: 'Base ref for API diff (default: auto-detect from PR base)'
+    required: false
+    default: ''
+  node-version:
+    description: 'Node.js version to use (default: 20)'
+    required: false
+    default: '20'
+
+outputs:
+  files-indexed:
+    description: 'Number of files indexed'
+    value: ${{ steps.index.outputs.files-indexed }}
+  symbols-count:
+    description: 'Number of symbols indexed'
+    value: ${{ steps.index.outputs.symbols-count }}
+  api-changes:
+    description: 'Number of API changes detected (PR only)'
+    value: ${{ steps.diff.outputs.api-changes }}
+  db-path:
+    description: 'Path to the generated database'
+    value: ${{ inputs.db-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install synapse CLI
+      shell: bash
+      run: npm install -g @synapse/cli
+
+    - name: Restore DB cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.db-path }}
+        key: synapse-db-${{ runner.os }}-${{ hashFiles('**/*.ts', '**/*.py', '**/*.go', '**/*.js') }}
+        restore-keys: |
+          synapse-db-${{ runner.os }}-
+
+    - name: Index repository
+      id: index
+      shell: bash
+      env:
+        CG_LANGUAGES: ${{ inputs.languages }}
+        CG_DB_PATH: ${{ inputs.db-path }}
+      run: |
+        LANG_FLAG=""
+        if [ -n "$CG_LANGUAGES" ]; then
+          LANG_FLAG="--languages $CG_LANGUAGES"
+        fi
+
+        OUTPUT=$(synapse init --db "$CG_DB_PATH" $LANG_FLAG 2>&1) || true
+        echo "$OUTPUT"
+
+        # Extract counts from output
+        FILES=$(echo "$OUTPUT" | grep -oP 'files indexed:\s*\K\d+' || echo "0")
+        SYMBOLS=$(echo "$OUTPUT" | grep -oP 'symbols:\s*\K\d+' || echo "0")
+
+        echo "files-indexed=$FILES" >> $GITHUB_OUTPUT
+        echo "symbols-count=$SYMBOLS" >> $GITHUB_OUTPUT
+
+    - name: API Diff (PR only)
+      id: diff
+      if: github.event_name == 'pull_request' && inputs.comment-on-pr == 'true'
+      shell: bash
+      env:
+        CG_DB_PATH: ${{ inputs.db-path }}
+        CG_BASE_REF: ${{ inputs.base-ref }}
+        CG_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        BASE_REF="$CG_BASE_REF"
+        if [ -z "$BASE_REF" ]; then
+          BASE_REF="$CG_PR_BASE_SHA"
+        fi
+
+        DIFF_OUTPUT=$(synapse diff "$BASE_REF" HEAD --db "$CG_DB_PATH" --json 2>&1) || true
+        
+        # Count changes
+        CHANGES=$(echo "$DIFF_OUTPUT" | jq '.changes | length' 2>/dev/null || echo "0")
+        echo "api-changes=$CHANGES" >> $GITHUB_OUTPUT
+        
+        # Save diff for comment step
+        echo "$DIFF_OUTPUT" > /tmp/synapse-diff.json
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request' && inputs.comment-on-pr == 'true' && steps.diff.outputs.api-changes != '0'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const diffRaw = fs.readFileSync('/tmp/synapse-diff.json', 'utf8');
+          let diff;
+          try {
+            diff = JSON.parse(diffRaw);
+          } catch {
+            return; // No valid diff
+          }
+          
+          if (!diff.changes || diff.changes.length === 0) return;
+          
+          let body = '## 🔍 Synapse API Diff\n\n';
+          body += `**${diff.changes.length}** public API change(s) detected.\n\n`;
+          
+          const removed = diff.changes.filter(c => c.change === 'removed');
+          const modified = diff.changes.filter(c => c.change === 'modified');
+          const added = diff.changes.filter(c => c.change === 'added');
+          
+          if (removed.length > 0) {
+            body += '### ❌ Removed\n';
+            for (const c of removed) {
+              body += `- \`${c.kind}\` **${c.name}** in \`${c.file}:${c.line}\`\n`;
+              if (c.oldSignature) body += `  - Was: \`${c.oldSignature}\`\n`;
+            }
+            body += '\n';
+          }
+          
+          if (modified.length > 0) {
+            body += '### ✏️ Modified\n';
+            for (const c of modified) {
+              body += `- \`${c.kind}\` **${c.name}** in \`${c.file}:${c.line}\`\n`;
+              if (c.oldSignature) body += `  - \`- ${c.oldSignature}\`\n`;
+              if (c.newSignature) body += `  - \`+ ${c.newSignature}\`\n`;
+            }
+            body += '\n';
+          }
+          
+          if (added.length > 0) {
+            body += '### ✅ Added\n';
+            for (const c of added) {
+              body += `- \`${c.kind}\` **${c.name}** in \`${c.file}:${c.line}\`\n`;
+              if (c.newSignature) body += `  - \`${c.newSignature}\`\n`;
+            }
+            body += '\n';
+          }
+          
+          body += '\n---\n*Generated by [synapse](https://github.com/synapse/synapse)*';
+          
+          // Find and update existing comment or create new one
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existing = comments.find(c => c.body?.includes('Synapse API Diff'));
+          
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }

@@ -1,0 +1,80 @@
+/**
+ * @synapse/mcp-server
+ *
+ * Phase 5: exposes `find_symbol`, `find_references`, and `get_definition`
+ * over the Model Context Protocol. The CLI bin entry lives in `./bin.ts`.
+ */
+
+export { MCP_SERVER_VERSION, createSynapseServer } from './server.js';
+export type { SynapseServer, SynapseServerOptions } from './server.js';
+export { startHttpServer } from './httpTransport.js';
+export type { HttpServerOptions, HttpServerHandle } from './httpTransport.js';
+export {
+  findSymbol,
+  findReferences,
+  getDefinition,
+  searchSymbols,
+  listSymbolsInFile,
+  outgoingCalls,
+  getStats,
+  getSource,
+  callHierarchy,
+  findImports,
+  indexStatus,
+  reindexFile,
+  listFiles,
+  semanticSearchHandler,
+  hybridSearchHandler,
+  exploreSymbol,
+  detectCycles,
+  topSymbols,
+  verifySymbol,
+  readOffloaded,
+  maybeOffload,
+  grepCode,
+  structuralSearch,
+  scanSecurity,
+  gitLog,
+  gitBlame,
+  findDeadCode,
+  codeMetrics,
+} from './handlers.js';
+export type {
+  SymbolHit,
+  ReferenceHit,
+  ReferencesForSymbol,
+  DefinitionResult,
+  OutgoingCall,
+  OutgoingCallsResult,
+  FileSymbolsResult,
+  GetSourceResult,
+  SourceLine,
+  CallHierarchyResult,
+  CallHierarchyNode,
+  CallDirection,
+  FindImportsResult,
+  ImportSite,
+  IndexStatusResult,
+  ReindexFileResult,
+  SemanticSearchResult,
+  HybridSearchResult,
+  ExploreSymbolResult,
+  CycleResult,
+  TopSymbolsResult,
+  VerifyResult,
+  OffloadedResult,
+  ReadOffloadedResult,
+  GrepMatch,
+  GrepResult,
+  StructuralMatch,
+  StructuralSearchResult,
+  SecurityFinding,
+  SecurityScanResult,
+  GitCommit,
+  GitLogResult,
+  GitBlameLine,
+  GitBlameResult,
+  DeadCodeResult,
+  FileMetrics,
+  CodeMetricsResult,
+} from './handlers.js';

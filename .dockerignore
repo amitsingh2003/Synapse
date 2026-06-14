@@ -1,0 +1,8 @@
+# Don't ship anything we don't need into the build context.
+node_modules
+**/node_modules
+**/dist
+.git
+.synapse
+*.log
+.DS_Store

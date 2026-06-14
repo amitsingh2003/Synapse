@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "synapse": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/packages/mcp-server/dist/bin.js",
+        "--root",
+        "${workspaceFolder}",
+        "--db",
+        "${workspaceFolder}/.synapse/graph.db"
+      ],
+      "env": {}
+    }
+  }
+}

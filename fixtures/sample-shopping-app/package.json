@@ -1,0 +1,7 @@
+{
+  "name": "sample-shopping-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixture used by synapse integration tests. Do not publish.",
+  "type": "module"
+}

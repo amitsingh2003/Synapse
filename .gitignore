@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+*.log
+.DS_Store
+
+# synapse local indexes (never commit)
+.synapse/
+.codegraph/
+
+# local benchmarks / scratch scripts
+benchmark.mjs
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/mcp.json
+.idea/

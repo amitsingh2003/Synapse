@@ -1,0 +1,16 @@
+export { indexFile } from './indexFile.js';
+export type { IndexFileResult } from './indexFile.js';
+export { discoverFiles } from './discover.js';
+export type { DiscoveredFile, DiscoverOptions, DiscoverSkip, SkipReason } from './discover.js';
+export { indexRepo } from './indexRepo.js';
+export type { IndexRepoOptions, IndexRepoSummary, ProgressEvent, SkipBreakdown } from './indexRepo.js';
+export { watchRepo } from './watcher.js';
+export type { WatchOptions, WatchEvent, WatcherHandle } from './watcher.js';
+export { toRelPath } from './writeFile.js';
+export { acquireLock } from './lock.js';
+export type { LockHandle } from './lock.js';
+export { shouldSkipDir, shouldSkipPath, HARD_SKIP_DIRS, isKnownCodeExtension } from './skipPolicy.js';
+export { createIgnoreStack } from './ignoreStack.js';
+export type { IgnoreStack, IgnoreStackOptions } from './ignoreStack.js';
+export { startAutoSync } from './autoSync.js';
+export type { AutoSyncOptions, AutoSyncHandle } from './autoSync.js';

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "synapse": {
+      "command": "node",
+      "args": [
+        "./packages/mcp-server/dist/bin.js",
+        "--db", "./.synapse/graph.db",
+        "--root", "."
+      ]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+name: Synapse CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  synapse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for diff
+
+      - name: Synapse Index & Diff
+        uses: ./
+        with:
+          comment-on-pr: 'true'
+          languages: 'typescript,python,go'
